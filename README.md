@@ -20,4 +20,3 @@ Also requires some sub-folders;
 /PD7153_PB    #fcs files
 
 
-This data is available on the ACP server.
