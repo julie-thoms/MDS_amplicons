@@ -541,14 +541,14 @@ def MDS_BM_celltype_assign(source, gates, data_name, save = False):
 	mds_sc1 = ['CD34_pos','CD38_neg','IL1RAP_pos'] #MDS sc are postivie for any of IL1RAP, CD45RA, CD123
 	mds_sc2 = ['CD34_pos','CD38_neg','CD45RA_pos']
 	mds_sc3 = ['CD34_pos','CD38_neg','CD123_pos']
-	sc = ['CD34_pos','CD38_neg','IL1RAP_neg','CD45RA_neg','CD123_neg']
+	hsc_mpp = ['CD34_pos','CD38_neg','IL1RAP_neg','CD45RA_neg','CD123_neg']
 	CMP = ['CD34_pos','CD38_pos','CD45RA_neg','CD123_pos']
 	gmp = ['CD34_pos','CD38_pos','CD45RA_pos']
 	mep = ['CD34_pos','CD38_pos','CD45RA_neg','CD123_neg']
 
-	col_names = ['mds_sc1', 'mds_sc2','mds_sc2','sc', 'cmp', 'gmp','mep']
-	celltypes = ['MDS_SC', 'MDS_SC','MDS_SC','SC',  'CMP', 'GMP', 'MEP'] #will rename all mds_sc to a single label
-	alltypes = [mds_sc1, mds_sc2, mds_sc3, sc, CMP, gmp, mep]
+	col_names = ['mds_sc1', 'mds_sc2','mds_sc2','hsc_mpp', 'cmp', 'gmp','mep']
+	celltypes = ['MDS_SC', 'MDS_SC','MDS_SC','HSC_MPP',  'CMP', 'GMP', 'MEP'] #will rename all mds_sc to a single label
+	alltypes = [mds_sc1, mds_sc2, mds_sc3, hsc_mpp, CMP, gmp, mep]
 
 	#Store list of which columns are true for each cell type in a dictionary
 

@@ -37,11 +37,14 @@ def about():
 	    call_haps(data, pt_id, haps, reads,  cutoff)
 		plot_hap_dist_sort_type(data, pt_id, haps, reads, cutoff, save = False)
 		plot_index_heatmap(data, title, haps, reads, cutoff, save = False)
-        calc_scVAF(data, pt_init, reads)
         calc_scVAF_binary_per_cell(data, pt_init, reads, cutoff)
+        calc_scVAF_mod(data, pt_init, reads, draw_plot = False)
+        tern_plot(y, pt_id, reads, cutoff)
+        tern_plot_cloud(y, j,  pt_id, reads, cutoff)
+
 	
 	'''
-	print('This module contains functions to assign haplotypes. For more info type index_haps.about?')
+	print('This module contains functions to calculate allele frequncies and assign haplotypes. For more info type index_haps.about?')
 
 
 def data_retrieval(sourcefile, metadata, pt_id):
@@ -315,7 +318,7 @@ def plot_index_heatmap(data, pt_id, haps, reads, cutoff, save = False):
     df = data.copy()
     a = df.groupby(['Haplotype', 'celltype']).size().unstack(fill_value = 0)
     a = a.drop(columns = ['unassigned']) #drop unassigned cells, no need to plot these
-    alltypes = ['HSC','MPP','SC','CMP',  'GMP','GMP2', 'MEP', 'MDS_SC',  'Neut', 'Mono','nBC']    
+    alltypes = ['HSC','MPP','HSC_MPP','MDS_SC', 'CMP',  'GMP','GMP2', 'MEP',  'Neut', 'Mono','nBC']    
     col_order = {}            
     for i, typ in enumerate(alltypes):
          col_order[typ] = i
@@ -386,7 +389,7 @@ def plot_index_heatmap_2(data, pt_id, haps, reads, cutoff, save = False):
     df = data.copy()
     a = df.groupby(['Haplotype', 'celltype']).size().unstack(fill_value = 0)
     a = a.drop(columns = ['unassigned']) #drop unassigned cells, no need to plot these
-    alltypes = ['HSC','MPP','SC','CMP',  'GMP','GMP2', 'MEP', 'MDS_SC',  'Neut', 'Mono','nBC']    
+    alltypes = ['HSC','MPP','HSC_MPP','MDS_SC', 'CMP',  'GMP','GMP2', 'MEP',  'Neut', 'Mono','nBC']    
     col_order = {}            
     for i, typ in enumerate(alltypes):
          col_order[typ] = i
@@ -424,6 +427,7 @@ def plot_index_heatmap_2(data, pt_id, haps, reads, cutoff, save = False):
 
     
     sns.scatterplot(x = 'ct', y = 'number', data = x, ax = ax2, marker = 's', s = 120, zorder = 10, color = 'black')
+    ax2_xlabels = x['number'].to_list()
     ax2.tick_params(axis='x', labelrotation = 0)
     ax2.set_xlabel('')
     ax2.set_ylabel('')
@@ -435,7 +439,7 @@ def plot_index_heatmap_2(data, pt_id, haps, reads, cutoff, save = False):
     ax2.set_ylim(1,1001)
     ax2.set_yticks([1,10, 100, 1000])
     ax2.set_yticklabels(['1','10', '100','1000'])  
-    ax2.set_xticklabels(['','','','','','','',''])
+    ax2.set_xticklabels(ax2_xlabels)
     ax2.set_yscale('log') 
     
     fig.tight_layout(h_pad = 1) 
@@ -448,117 +452,6 @@ def plot_index_heatmap_2(data, pt_id, haps, reads, cutoff, save = False):
     return b
 
 
-def calc_scVAF(data, pt_init, reads):
-    
-    '''
-    This function takes amplicon read counts for mt and wt and calculates the proportion of mutated alleles in each cell that meets the specified read count.
-    Not sure this is the best method though, the second function calc_scVAF_binary_per_cell() is aligned to method for calling haps.
-    All CD34pos cells are treated as a single sample.
-    The function returns a plot and data suitable for plotting (eg/ after merging all samples).
-    '''
-    
-    cond = pt_init
-    print(cond)
-    
-    if cond == 'JP001':  #cols is the columns actually being used, can be easily tweaked
-        cols = ['JP001_RUNX1_g','JP001_SRSF2','JP001_TET2a']
-        #cols = ['JP001_RUNX1_g','JP001_SRSF2','JP001_TET2a','JP001_TET2b_g']
-        allcols = ['JP001_RUNX1_c','JP001_RUNX1_g','JP001_SRSF2','JP001_TET2a','JP001_TET2b_c','JP001_TET2b_g']
-    elif cond == 'PD7153':
-        cols = ['PD7153_SRSF2', 'PD7153_TET2a', 'PD7153_TET2b']
-        allcols = ['PD7153_CUX1', 'PD7153_SRSF2', 'PD7153_TET2a', 'PD7153_TET2b', 'PD7153_TGFB3_c', 'PD7153_TGFB3_g']
-    elif cond == 'PD7151': 
-        cols = ['PD7151_TET2a', 'PD7151_TET2b']
-        allcols = ['PD7151_TET2a', 'PD7151_TET2b']
-        
-    else:
-        print('Enter JP001,  PD7153, or PD7151 as pt_id')
-    
-    #Import information about plate cell type and patient
-    key = pd.read_excel('../Data/Amp_data/Amplicon_metadata_fixed_anon.xlsx', sheet_name = 'PlateID')
-    key = key.drop(['Cell Origin', 'Plate Nr', 'Plate Name','Nr of cells'], axis=1)
-    key.rename(columns = {'Comments2':'Plate'}, inplace = True)
-    key.rename(columns = {'Cell-group':'Celltype'}, inplace = True)
-    
-    #Make a dictionary to associate plates with patients and plate with cell type
-    plate_pt_dict = dict(zip(key.Plate, key.Patient))
-    plate_cell_dict = dict(zip(key.Plate, key.Celltype))
-    
-    #Group the data and apply filters
-    df = data.copy()
-    df = df.groupby(['Plate', 'Well', 'Amplicon']).sum().unstack()
-    df.columns = allcols
-    
-    df = df.loc[(df[cols] >= reads).all(axis=1)] #df1 contains just the rows with cells we want - use this to create a filter or key
-    df['Plate'] = df.index.get_level_values(0)  #These lines send indexes to columns
-    df['Well'] = df.index.get_level_values(1)
-    df['Plate_Well'] = df['Plate'].astype(str) + '_' + df['Well'].astype(str)
-    wells = df['Plate_Well'].drop_duplicates().to_list() 
-    print(f'Cells with {reads} reads  = ', len(wells))
-
-    df2 = data.copy()
-    df2 = df2[df2['Plate_Well'].isin(wells)]
-    df2 = df2[df2['Amplicon'].isin(cols)]
-    
-    #Calculate the allele frequency
-    df2 = df2.iloc[:, 0:1].unstack(level = 3)
-    df2['Total'] = df2.iloc[: , 0] + df2.iloc[: , 1]
-    df2['Mut_freq'] = df2.iloc[:, 0]/df2['Total']
-    
-
-    #Assign Wt or MT to each allele
-    df2 = df2.drop(columns = ['Reads', 'Total'])
-    df2 = df2.unstack(2)
-    df2.columns = cols
-
-
-    df2['Sort_cell_type'] = df2.index.get_level_values(0)
-    df2['Sort_cell_type'] = df2['Sort_cell_type'].replace(plate_cell_dict)
-    df2['Plate'] = df2.index.get_level_values(0)
-    df2['Well'] = df2.index.get_level_values(1)
-    df2['Plate_Well'] = df2['Plate'].astype(str) + '_' + df2['Well'].astype(str)
-    df2 = df2.drop(columns = ['Plate', 'Well'])
-    
-    rename = {'CD34+halfCD38-': 'CD34', 'CD34+/38-':'CD34', 'CD34+':'CD34'}
-    df2['Sort_cell_type'].replace(rename, inplace = True)
-    df2.sort_values(by=['Sort_cell_type'], inplace = True)
-    
-    x = df2.copy().groupby(by = 'Sort_cell_type').mean()
-    x = x.unstack().to_frame()
-    x['celltype'] = x.index.get_level_values(1)
-    x['Amplicon'] = x.index.get_level_values(0)
-    co = ['VAF', 'sort_celltype', 'Amplicon']
-    x.columns = co
-    x.sort_values(by=['sort_celltype'], inplace = True)
-    
-    all_amps = ['JP001_SRSF2',
-            'PD7153_TET2b',
-            'JP001_TET2a',
-            'PD7153_TET2a', 
-            'PD7151_TET2b',
-            'JP001_TET2b_g', 
-            'PD7153_SRSF2', 
-            'JP001_RUNX1_g',
-            'PD7153_CUX1',
-            'PD7151_TET2a'
-           ]
-    colors = sns.color_palette('husl', n_colors = len(all_amps))
-    allVAFcols = dict(zip(all_amps, colors))
-
-    fig, ax = plt.subplots(figsize = (2.5,4))
-    sns.scatterplot(x = 'sort_celltype', y = 'VAF', data = x, s = 100,  hue = 'Amplicon', palette = allVAFcols, alpha = 0.5, ax = ax)
-    ax.legend(loc = 'upper left', bbox_to_anchor = [1,1], title = 'scVAFs by read frequency')
-    ax.set_ylim(0,0.6)
-    ax.axhline(0.1, ls = '--', c = 'silver', zorder = 0)
-    ax.axhline(0.2, ls = '--', c = 'silver', zorder = 0)
-    ax.axhline(0.3, ls = '--', c = 'silver', zorder = 0)
-    ax.axhline(0.4, ls = '--', c = 'silver', zorder = 0)
-    ax.axhline(0.5, ls = '--', c = 'silver', zorder = 0)
-    ax.set_ylabel('')
-    ax.set_xlabel('')
-    ax.tick_params(axis='x', labelrotation = 90)
-    
-    return x
 
 def calc_scVAF_binary_per_cell(data, pt_init, reads, cutoff):
     
@@ -688,6 +581,176 @@ def calc_scVAF_binary_per_cell(data, pt_init, reads, cutoff):
     
     return data
 
+
+def calc_scVAF_mod(data, pt_init, reads, draw_plot = False):
+    
+    '''
+    This function takes amplicon read counts for mt and wt and calculates the proportion of mutated alleles in each cell 
+    that meets the specified read count for that amplicon.
+    All CD34pos cells are treated as a single sample.
+    The function returns a plot and data suitable for plotting (eg/ after merging all samples).
+    
+    '''
+    
+    cond = pt_init
+    print(cond)
+    
+    #Order of cols has to mach the df, do not reorder
+    if cond == 'JP001':  #cols is the columns actually being used, can be easily tweaked
+        cols = ['JP001_RUNX1_g','JP001_SRSF2','JP001_TET2a','JP001_TET2b_g']
+        allcols = ['JP001_RUNX1_c','JP001_RUNX1_g','JP001_SRSF2','JP001_TET2a','JP001_TET2b_c','JP001_TET2b_g']
+        cols_order = ['JP001_SRSF2','JP001_TET2a','JP001_TET2b_g', 'JP001_RUNX1_g']
+    elif cond == 'PD7153':
+        cols = ['PD7153_SRSF2', 'PD7153_TET2a', 'PD7153_TET2b']
+        allcols = ['PD7153_CUX1', 'PD7153_SRSF2', 'PD7153_TET2a', 'PD7153_TET2b', 'PD7153_TGFB3_c', 'PD7153_TGFB3_g']
+        cols_order = ['PD7153_TET2b','PD7153_SRSF2', 'PD7153_TET2a' ]
+    elif cond == 'PD7151': 
+        cols = ['PD7151_TET2a', 'PD7151_TET2b']
+        allcols = ['PD7151_TET2a', 'PD7151_TET2b']
+        cols_order = ['PD7151_TET2b', 'PD7151_TET2a']
+        
+    else:
+        print('Enter JP001,  PD7153, or PD7151 as pt_id')
+    
+    #Import information about plate cell type and patient
+    key = pd.read_excel('../Data/Amp_data/Amplicon_metadata_fixed_anon.xlsx', sheet_name = 'PlateID')
+    key = key.drop(['Cell Origin', 'Plate Nr', 'Plate Name','Nr of cells'], axis=1)
+    key.rename(columns = {'Comments2':'Plate'}, inplace = True)
+    key.rename(columns = {'Cell-group':'Celltype'}, inplace = True)
+    
+    #Make a dictionary to associate plates with patients and plate with cell type
+    plate_pt_dict = dict(zip(key.Plate, key.Patient))
+    plate_cell_dict = dict(zip(key.Plate, key.Celltype))
+    
+    #Group the data and apply filters
+    df = data.copy()
+    qc = data.copy()
+    #qc = qc.groupby(['Plate', 'Well', 'Genotype' ,'Amplicon']).sum().unstack()
+    qc = qc.groupby(['Plate', 'Well','Amplicon', 'Genotype']).sum().unstack()
+    df = df.groupby(['Plate', 'Well', 'Amplicon']).sum().unstack()
+    df.columns = allcols
+    df['Plate'] = df.index.get_level_values(0)  #These lines send indexes to columns
+    df['Well'] = df.index.get_level_values(1)
+    df['Plate_Well'] = df['Plate'].astype(str) + '_' + df['Well'].astype(str)
+    df['Sort_cell_type'] = df['Plate'].replace(plate_cell_dict)
+    rename = {'CD34+halfCD38-': 'CD34', 'CD34+/38-':'CD34', 'CD34+':'CD34', 'NEs':'Neut', 'Monocytes': 'Mono', 'nBCs': 'nBC'}
+    df['Sort_cell_type'].replace(rename, inplace = True)#df now contains cell type as well
+    
+    #Modify here to sequentially get subframes
+    
+    result = {}
+    sem_result = {}
+    numcell = {}
+    
+    for c in cols:
+        
+        #Work out which wells fit the read criteria, and how many cells there are of each type
+        df1 = df.loc[(df[c] >= reads)] #df1 contains just the rows with cells we want - use this to create a filter or key
+        wells = df1['Plate_Well'].drop_duplicates().to_list()  #cells that meet the criteria
+        print(f'Cells with {reads} reads for amplicon {c}  = ', len(wells))
+        
+        dfcells = df1['Sort_cell_type'].drop_duplicates().to_list()
+        
+        for dfc in dfcells:
+            cellno = df1.loc[df1['Sort_cell_type'].isin([dfc])].shape[0]
+            print(dfc, cellno)
+            sample_id = c + ',' + dfc
+            numcell[sample_id] = [cellno] #cellno dictionary now contains counts
+        
+        cell_counts = pd.DataFrame.from_dict(numcell, orient = 'Index', columns = ['cell_count'])
+        #cell_counts gets created in each iteration from numcell, but numcell gets the counts added in each iteration
+        #so the final iteration cell_counts has all the counts. This is what is used in the final output
+        cell_counts['labels'] = cell_counts.index.get_level_values(0)
+        cell_counts[['Amplicon', 'sort_celltype']] = cell_counts['labels'].str.split(',', expand = True)
+        cell_counts = cell_counts.drop(columns = 'labels')
+        
+        df2 = data.copy()
+        df2 = df2[df2['Plate_Well'].isin(wells)]
+        df2 = df2[df2['Amplicon'].isin(cols)]
+        
+
+        #Calculate the allele frequency
+        df2 = df2.iloc[:, 0:1].unstack(level = 3)
+        df2['Total'] = df2.iloc[: , 0] + df2.iloc[: , 1]
+        df2['Mut_freq'] = df2.iloc[:, 0]/df2['Total']
+
+        df2 = df2.drop(columns = ['Reads', 'Total'])
+        df2 = df2.unstack(2)
+        df2.columns = cols
+        df2['Sort_cell_type'] = df2.index.get_level_values(0)
+        df2['Sort_cell_type'] = df2['Sort_cell_type'].replace(plate_cell_dict)
+        
+        df2['Sort_cell_type'].replace(rename, inplace = True)
+        df2.sort_values(by=['Sort_cell_type'], inplace = True)
+  
+        #Get means for each amplicon/cell type
+        x = df2.copy().groupby(by = 'Sort_cell_type').mean()
+        x = x.unstack().to_frame()
+        x['celltype'] = x.index.get_level_values(1)
+        x['Amplicon'] = x.index.get_level_values(0)
+        co = ['VAF', 'sort_celltype', 'Amplicon']
+        x.columns = co   
+        
+        
+        #Get sem for each amplicon/cell type
+        x2 = df2.copy().groupby(by = 'Sort_cell_type').sem()        
+        x2 = x2.unstack().to_frame()
+        x2['celltype'] = x2.index.get_level_values(1)
+        x2['Amplicon'] = x2.index.get_level_values(0)
+        co2 = ['sem', 'sort_celltype', 'Amplicon']
+        x2.columns = co2  
+        
+        result[c] = x.loc[x['Amplicon'].isin([c])]
+        sem_result[c] = x2.loc[x2['Amplicon'].isin([c])]
+
+    x_result = pd.concat(result.values(), axis = 0)
+    x2_result = pd.concat(sem_result.values(), axis = 0)
+    x_x2 = x_result.merge(x2_result, how = 'left', on = ['Amplicon', 'sort_celltype'] )
+    
+    final = x_x2.merge(cell_counts, how = 'left', on = ['Amplicon', 'sort_celltype'])
+
+    
+    order = {}
+    for a, d in enumerate(cols_order):
+        order[d] = a
+    print(order)
+    
+    x_result['order'] =  x_result['Amplicon'].replace(order)
+    x_result.sort_values(by=['order'], inplace = True)
+    
+    all_amps = ['JP001_SRSF2',
+        'PD7153_TET2b',
+        'JP001_TET2a',
+        'PD7153_TET2a', 
+        'PD7151_TET2b',
+        'JP001_TET2b_g', 
+        'PD7153_SRSF2', 
+        'JP001_RUNX1_g',
+        'PD7153_CUX1',
+        'PD7151_TET2a'
+       ]
+    colors = sns.color_palette('husl', n_colors = len(all_amps))
+    allVAFcols = dict(zip(all_amps, colors))
+
+    #This plots the mean only
+    if draw_plot == True:
+        fig, ax = plt.subplots(figsize = (2.5,4))
+        sns.scatterplot(x = 'sort_celltype', y = 'VAF', data = x_x2, s = 80,  hue = 'Amplicon', palette = allVAFcols, alpha = 0.5, ax = ax)
+        ax.legend(loc = 'upper left', bbox_to_anchor = [1,1], title = 'scVAFs')
+        ax.set_ylim(0,0.6)
+        ax.axhline(0.1, ls = '--', c = 'silver', zorder = 0)
+        ax.axhline(0.2, ls = '--', c = 'silver', zorder = 0)
+        ax.axhline(0.3, ls = '--', c = 'silver', zorder = 0)
+        ax.axhline(0.4, ls = '--', c = 'silver', zorder = 0)
+        ax.axhline(0.5, ls = '--', c = 'silver', zorder = 0)
+        ax.set_ylabel('')
+        ax.set_xlabel('')
+        ax.tick_params(axis='x', labelrotation = 90)
+        ax.margins(x=0.1)
+        
+    return final
+
+
 def tern_plot(y, pt_id, reads, cutoff):
     
     '''
@@ -695,7 +758,7 @@ def tern_plot(y, pt_id, reads, cutoff):
     y is the dataframe containing the proportion of each haplotype for each cell type
     '''
     
-    cety = ['SC','CMP',  'GMP','GMP2', 'MEP', 'MDS_SC',  'Neut', 'Mono','nBC']
+    cety = ['HSC_MPP','CMP',  'GMP','GMP2', 'MEP', 'MDS_SC',  'Neut', 'Mono','nBC']
     colors = sns.color_palette('husl', n_colors = len(cety))
     cdict = dict(zip(cety, colors))
 
@@ -742,7 +805,7 @@ def tern_plot_cloud(y, j,  pt_id, reads, cutoff):
     y is the dataframe containing the proportion of each haplotype for each cell type.
     j is the dataframe conaining the toal number of cells for each haplotype for each cell type.
     '''
-    cety = ['SC','CMP',  'GMP','GMP2', 'MEP', 'MDS_SC',  'Neut', 'Mono','nBC']
+    cety = ['HSC_MPP','CMP',  'GMP','GMP2', 'MEP', 'MDS_SC',  'Neut', 'Mono','nBC']
     colors = sns.color_palette('husl', n_colors = len(cety))
     cdict = dict(zip(cety, colors))
 
