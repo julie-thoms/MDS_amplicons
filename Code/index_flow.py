@@ -525,13 +525,14 @@ def flowplot_bycelltype_gating(assigndata, logs, gates, data_name, plot = True, 
 	sourcedata['Colour'] = sourcedata['celltype'].map(palette)
 
 #make the plots    
-	fig = plt.figure(constrained_layout=True, figsize = (16, 4.5))
-	gs = fig.add_gridspec(3, 3, height_ratios = [1,1,1], hspace = 0.1)
+	fig = plt.figure(constrained_layout=True, figsize = (16, 3.5))
+	gs = fig.add_gridspec(3, 4, height_ratios = [1,1,1], hspace = 0.1)
 	ax0 = fig.add_subplot(gs[:,0])
 	ax1 = fig.add_subplot(gs[:,1])
 	ax2 = fig.add_subplot(gs[0:1,2])
 	ax3 = fig.add_subplot(gs[1:2,2])
 	ax4 = fig.add_subplot(gs[2:3,2])
+	ax5 = fig.add_subplot(gs[0:,3])
 
 #Populate each axis individually
 	ax = ax0
@@ -598,12 +599,6 @@ def flowplot_bycelltype_gating(assigndata, logs, gates, data_name, plot = True, 
 		ax.axhline(gates[y_label] + 11, ls = '--', c = 'k')
 	ax.autoscale_view()
     
-	for hap in palette:
-		point = ax.scatter([], [], color=palette[hap], s = 20, alpha = 0.3, label=hap)
-		ax.add_artist(point)
-		ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.,title='Cell type')
-	 
-    
 	ax = ax3
 	y =  ['CD45RA-FITC', 'SSC-A']   
 	plot_data = sourcedata.loc[sourcedata['celltype'].isin(['HSC_MPP', 'MDS_SC'])]
@@ -645,7 +640,32 @@ def flowplot_bycelltype_gating(assigndata, logs, gates, data_name, plot = True, 
 	if y_label in gates:
 		ax.axhline(gates[y_label] + 11, ls = '--', c = 'k')
 	ax.autoscale_view()
+
+	ax = ax5
+	y = ['CD45RA-FITC', 'CD90-BV421']
+	plot_data = sourcedata.loc[sourcedata['celltype'].isin(['HSC_MPP', 'MDS_SC'])]
+	x_label = y[0]
+	y_label = y[1] 
+	ax.scatter(plot_data[x_label] + 11, plot_data[y_label] + 11, alpha = 0.3, c = plot_data['Colour'], s = 5)
+	ax.set_xlabel(x_label)
+	ax.set_ylabel(y_label)
+
+	for hap in palette:
+		point = ax.scatter([], [], color=palette[hap], s = 20, alpha = 0.3, label=hap)
+		ax.add_artist(point)
+		ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.,title='Cell type')
     
+	if x_label in logs:
+		ax.set_xscale('log')
+		ax.set_xlim(left = 10, right = 10000)
+	if y_label in logs:
+		ax.set_yscale('log')
+		ax.set_ylim(bottom = 10)
+	if x_label in gates:
+		ax.axvline(gates[x_label] + 11, ls = '--', c = 'k')
+	if y_label in gates:
+		ax.axhline(gates[y_label] + 11, ls = '--', c = 'k')
+	ax.autoscale_view()
        
 
 	plt.rcParams['svg.fonttype'] = 'none'  

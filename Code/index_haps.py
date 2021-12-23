@@ -85,6 +85,44 @@ def data_retrieval(sourcefile, metadata, pt_id):
 
     return pt_allele_plate
 
+
+def data_retrieval2(sourcefile, metadata, pt_id):
+
+    '''
+    This function reads data for a single patient from a master spreadsheet with amplicon data for all plates/patients.
+    This works with clean data from the a_new_data_cleanup notebook.
+    Input is the sourcefile with the readcounts (allele_counts_anon), and a metadata file which contains cell type for each plate (Amplicon_metadata_fixed_anon.xlsx).
+    The function returns a dataframe containing just the data for the specified patient, ready to merge with index data and then plot.
+    '''
+
+    df = pd.read_csv(sourcefile, index_col = [0, 1, 2, 3], sep = '\t')
+    df.columns = ['Reads']
+    df['Plate'] = df.index.get_level_values(0)  #These lines send indexes to columns
+    df['Well'] = df.index.get_level_values(1)
+    df['Amplicon'] = df.index.get_level_values(2)
+    df['Genotype'] = df.index.get_level_values(3)
+    df[['Patient', 'one', 'two']] = df['Amplicon'].str.split('_', expand = True)
+    df = df.drop(columns = ['one', 'two'])
+
+    #Import information about plate cell type and patient
+    key = pd.read_excel(metadata, sheet_name = 'PlateID')
+    key = key.drop(['Cell Origin', 'Plate Nr', 'Plate Name','Nr of cells'], axis=1)
+    key.rename(columns = {'Comments2':'Plate'}, inplace = True)
+    key.rename(columns = {'Cell-group':'Celltype'}, inplace = True)
+
+    #Make a dictionary to associate plates with patients and plate with cell type
+    plate_pt_dict = dict(zip(key.Plate, key.Patient))
+    plate_cell_dict = dict(zip(key.Plate, key.Celltype))
+
+    #Now just look at data from selected patient, and apply filters to identify cells with enough reads/amplicon
+    pt_allele_plate = df.loc[df['Patient'].isin([pt_id])] 
+    pt_allele_plate = pt_allele_plate.drop(columns = 'Patient') #Drop the Patient ID column and other unwanted cols
+    pt_allele_plate['Cell_type'] = pt_allele_plate['Plate'].replace(plate_cell_dict)
+    pt_allele_plate['Plate_Well'] = pt_allele_plate['Plate'].astype(str) + '_' + pt_allele_plate['Well'].astype(str)
+
+    return pt_allele_plate
+    
+
 def call_haps(data, metadata, pt_id, haps, reads,  cutoff):
     
     cond = f'{pt_id}_{haps}'
@@ -178,6 +216,9 @@ def call_haps(data, metadata, pt_id, haps, reads,  cutoff):
         
     if 'PD7153_TGFB3_g' in df2.columns:   
         df2.loc[:,'PD7153_TGFB3_g'].replace({'w':'T','m':'t' }, inplace = True)
+
+    if 'PD7153_CUX1' in df2.columns:   
+        df2.loc[:,'PD7153_CUX1'].replace({'w':'C','m':'c' }, inplace = True)    
         
     if 'PD7151_TET2a' in df2.columns:   
         df2.loc[:,'PD7151_TET2a'].replace({'w':'A','m':'a' }, inplace = True)
@@ -199,7 +240,8 @@ def call_haps(data, metadata, pt_id, haps, reads,  cutoff):
         elif cond == 'PD7153_3':
             a = row['PD7153_TET2b'] + row['PD7153_TET2a'] + row['PD7153_SRSF2']
         elif cond == 'PD7153_4':
-            a = row['PD7153_TET2b'] + row['PD7153_TET2a'] + row['PD7153_SRSF2'] + row['PD7153_TGFB3_g']
+            #a = row['PD7153_TET2b'] + row['PD7153_TET2a'] + row['PD7153_SRSF2'] + row['PD7153_TGFB3_g']
+            a = row['PD7153_TET2b'] + row['PD7153_TET2a'] + row['PD7153_SRSF2'] + row['PD7153_CUX1']
         elif cond == 'PD7151_2':
             a = row['PD7151_TET2b'] + row['PD7151_TET2a']
         
@@ -236,23 +278,44 @@ def plot_hap_dist_sort_type(data, pt_id, haps, reads, cutoff, save = False): #pl
 
     #set up correct variables for the number of input haplotypes
     
+    # if cond == 'JP001_2':
+    #     hap_poss = ['CR', 'Cr', 'cR', 'cr']
+        
+    # elif cond == 'JP001_3':
+    #     hap_poss = ['SAR', 'SAr', 'SaR', 'Sar', 'sAR', 'sAr', 'saR', 'sar']
+
+    # elif cond == 'JP001_4':
+    #     hap_poss = ['SABR', 'SABr', 'SAbR', 'SAbr', 'SaBR', 'SaBr', 'SabR', 'Sabr', 'sABR', 'sABr', 'sAbR', 'sAbr', 'saBR', 'saBr', 'sabR', 'sabr']
+      
+    # elif cond == 'PD7151_2':
+    #     hap_poss = ['BA', 'Ba', 'bA', 'ba']
+
+    # elif cond == 'PD7153_3':
+    #     hap_poss = ['BAS', 'BAs', 'BaS', 'Bas', 'bAS', 'bAs', 'baS', 'bas']
+
+    # elif cond == 'PD7153_4':
+    #     #hap_poss = ['BAST', 'BASt', 'BAsT', 'BAst', 'BaST', 'BaSt', 'BasT', 'Bast', 'bAST', 'bASt', 'bAsT', 'bAst', 'baST', 'baSt', 'basT', 'bast']
+    #     hap_poss = ['BASC', 'BASc', 'BAsC', 'BAsc', 'BaSC', 'BaSc', 'BasC', 'Basc', 'bASC', 'bASc', 'bAsC', 'bAsc', 'baSC', 'baSc', 'basC', 'basc']
+
     if cond == 'JP001_2':
         hap_poss = ['CR', 'Cr', 'cR', 'cr']
         
     elif cond == 'JP001_3':
-        hap_poss = ['SAR', 'SAr', 'SaR', 'Sar', 'sAR', 'sAr', 'saR', 'sar']
+        hap_poss = ['SAR', 'sAR', 'SaR', 'SAr', 'saR', 'sAr', 'Sar', 'sar']
 
     elif cond == 'JP001_4':
-        hap_poss = ['SABR', 'SABr', 'SAbR', 'SAbr', 'SaBR', 'SaBr', 'SabR', 'Sabr', 'sABR', 'sABr', 'sAbR', 'sAbr', 'saBR', 'saBr', 'sabR', 'sabr']
+        hap_poss = ['SABR', 'sABR', 'SaBR', 'SAbR', 'SABr', 'saBR', 'sAbR', 'sABr', 'SabR', 'SaBr','SAbr', 'sabR', 'saBr',  'sAbr','Sabr',  'sabr']
       
     elif cond == 'PD7151_2':
-        hap_poss = ['BA', 'Ba', 'bA', 'ba']
+        hap_poss = ['BA', 'bA', 'Ba', 'ba']
 
     elif cond == 'PD7153_3':
-        hap_poss = ['BAS', 'BAs', 'BaS', 'Bas', 'bAS', 'bAs', 'baS', 'bas']
+        hap_poss = ['BAS', 'bAS', 'BaS', 'BAs', 'baS', 'bAs', 'Bas', 'bas']
 
     elif cond == 'PD7153_4':
-        hap_poss = ['BAST', 'BASt', 'BAsT', 'BAst', 'BaST', 'BaSt', 'BasT', 'Bast', 'bAST', 'bASt', 'bAsT', 'bAst', 'baST', 'baSt', 'basT', 'bast']
+        # hap_poss = ['BAST', 'bAST', 'BaST', 'BAsT',  'BASt', 'baST', 'bAsT', 'bASt',  'BasT', 'BaSt', 'BAst', 'basT', 'bAst', 'baSt', 'Bast', 'bast']
+        hap_poss = ['BASC', 'bASC', 'BaSC', 'BAsC',  'BASc', 'baSC', 'bAsC', 'bASc',  'BasC', 'BaSc', 'BAsc', 'basC', 'bAsc', 'baSc', 'Basc', 'basc']
+
 
     num_col = len(hap_poss)
     cols = sns.color_palette("husl", num_col)     
@@ -394,6 +457,9 @@ def plot_index_heatmap_2(data, pt_id, haps, reads, cutoff, save = False):
     for i, typ in enumerate(alltypes):
          col_order[typ] = i
 
+    #haplotype dictionary
+    hap_dict = {'CR': 'wt', 'Cr': 'r', 'cR': 'c', 'cr': 'cr', 'SAR': 'wt', 'SAr': 'r', 'SaR': 'a', 'Sar': 'ar', 'sAR': 's', 'sAr': 'sr', 'saR': 'sa', 'sar': 'sar', 'SABR': 'wt', 'SABr': 'r', 'SAbR': 'b', 'SAbr': 'br', 'SaBR': 'a', 'SaBr': 'a', 'SabR': 'ab', 'Sabr': 'abr', 'sABR': 's', 'sABr': 'sr', 'sAbR': 'sb', 'sAbr': 'sbr', 'saBR': 'sa', 'saBr': 'sar', 'sabR': 'sab', 'sabr': 'sabr', 'BA': 'wt', 'Ba': 'a', 'bA': 'b', 'ba': 'ba', 'BAS': 'wt', 'BAs': 's', 'BaS': 'a', 'Bas': 'as', 'bAS': 'b', 'bAs': 'bs', 'baS': 'ba', 'bas': 'bas', 'BAST': 'wt', 'BASt': 't', 'BAsT': 's', 'BAst': 'st', 'BaST': 'a', 'BaSt': 'at', 'BasT': 'as', 'Bast': 'ast', 'bAST': 'b', 'bASt': 'bt', 'bAsT': 'bs', 'bAst': 'bst', 'baST': 'ba', 'baSt': 'bat', 'basT': 'bas', 'bast': 'bast', 'BASC': 'wt', 'BASc': 'c', 'BAsC': 's', 'BAsc': 'sc', 'BaSC': 'a', 'BaSc': 'ac', 'BasC': 'as', 'Basc': 'asc', 'bASC': 'b', 'bASc': 'bc', 'bAsC': 'bs', 'bAsc': 'bsc', 'baSC': 'ba', 'baSc': 'bac', 'basC': 'bas', 'basc': 'basc'}
+
     a = a.T
     a['ct'] = a.index.get_level_values(0)
     a = a.replace({'ct': col_order})
@@ -403,7 +469,7 @@ def plot_index_heatmap_2(data, pt_id, haps, reads, cutoff, save = False):
     b = a.copy()
     a = a * 100 /a.sum(axis = 0)
 
-    fig, (ax2,ax) = plt.subplots(2, 1, figsize = (6,4), gridspec_kw = dict(height_ratios = [0.8,5.2]))
+    fig, (ax2,ax) = plt.subplots(2, 1, figsize = (8,4), gridspec_kw = dict(height_ratios = [0.8,5.2]))
     
     cbar_ax = fig.add_axes([1, 0.22, .03, 0.565])
     cbar_ax.tick_params(size=0)
@@ -413,6 +479,8 @@ def plot_index_heatmap_2(data, pt_id, haps, reads, cutoff, save = False):
     ax.tick_params(axis='x', labelrotation = 90)
     ax.set_xlabel('')
     ax.set_ylabel('')
+    lbs = [hap_dict[l.get_text()] for l in ax.get_yticklabels()] #replace haplotype labels for figure
+    ax.set_yticklabels(lbs)
 
     x = df.groupby(['Haplotype', 'celltype']).size().unstack(fill_value = 0)
     x = x.drop(columns = ['unassigned'])
