@@ -32,12 +32,14 @@ def about():
 
     The callable functions are;
         count_files(directory)
+        get_inx(meta : dict)
         get_channels(directory)
         plate_qc(directory, data_name, save = False)
         get_comp_data(directory, plate_key, channel_key, plot = False)
         get_comp_data_autolabel(directory, plate_key, plot = False)
         flowplot_byplate(compdata, plot_list, logs, gates,  data_name, plot = True, save = False)
         flowplot_bycelltype(assigndata, plot_list, logs, gates,  data_name, plot = True, save = False)
+        flowplot_bycelltype_gating(assigndata, logs, gates, data_name, plot = True, save = False)
         MDS_BM_celltype_assign(source, gates, data_name, save = False)
         BM_celltype_assign(source, gates, data_name, save = False)
         PB_celltype_assign(source, gates, data_name, save = False)
