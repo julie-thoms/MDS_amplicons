@@ -44,7 +44,7 @@ def about():
 
 	
 	'''
-	print('This module contains functions to calculate allele frequncies and assign haplotypes. For more info type index_haps.about?')
+	print('This module contains functions to calculate allele frequencies and assign haplotypes. For more info type index_haps.about?')
 
 
 
