@@ -93,27 +93,34 @@ def call_haps(data, metadata, pt_id, haps, reads,  cutoff):
     if cond == 'JP001_2':
         cols = ['JP001_RUNX1_c', 'JP001_RUNX1_g']
         allcols = ['JP001_RUNX1_c','JP001_RUNX1_g','JP001_SRSF2','JP001_TET2a','JP001_TET2b_c','JP001_TET2b_g']
+        print(f'Haplotypes being called on {cols}')
     elif cond == 'JP001_3':
         cols = ['JP001_RUNX1_g', 'JP001_SRSF2', 'JP001_TET2a']
         allcols = ['JP001_RUNX1_c','JP001_RUNX1_g','JP001_SRSF2','JP001_TET2a','JP001_TET2b_c','JP001_TET2b_g']
+        print(f'Haplotypes being called on {cols}')
     elif cond == 'JP001_4':
         cols = ['JP001_RUNX1_g', 'JP001_SRSF2', 'JP001_TET2a', 'JP001_TET2b_g']
         allcols = ['JP001_RUNX1_c','JP001_RUNX1_g','JP001_SRSF2','JP001_TET2a','JP001_TET2b_c','JP001_TET2b_g']
+        print(f'Haplotypes being called on {cols}')
     elif cond == 'PD7153_3':
         cols = ['PD7153_SRSF2', 'PD7153_TET2a', 'PD7153_TET2b']
         allcols = ['PD7153_CUX1', 'PD7153_SRSF2', 'PD7153_TET2a', 'PD7153_TET2b', 'PD7153_TGFB3_c', 'PD7153_TGFB3_g']
+        print(f'Haplotypes being called on {cols}')
     elif cond == 'PD7153_4':   
         cols = ['PD7153_SRSF2', 'PD7153_TET2a', 'PD7153_TET2b',  'PD7153_CUX1']
         allcols = ['PD7153_CUX1', 'PD7153_SRSF2', 'PD7153_TET2a', 'PD7153_TET2b', 'PD7153_TGFB3_c', 'PD7153_TGFB3_g']
+        print(f'Haplotypes being called on {cols}')
     elif cond == 'PD7151_2': 
         cols = ['PD7151_TET2a', 'PD7151_TET2b']
         allcols = ['PD7151_TET2a', 'PD7151_TET2b']
-
+        print(f'Haplotypes being called on {cols}')
     elif cond == 'PD7151_3': 
         cols = ['PD7151_TET2a', 'PD7151_TET2b', 'PD7151_SRSF2']
         allcols = ['PD7151_TET2a', 'PD7151_TET2b', 'PD7151_SRSF2']
+
+        print(f'Haplotypes being called on {cols}')
     else:
-        print('For JP001 enter 2/3/4 haplotypes, for PD7153 enter 3/4 haplotypes, for PD7151 enter 2 haplotypes')
+        print('For JP001 enter 2/3/4 haplotypes, for PD7153 enter 3/4 haplotypes, for PD7151 enter 2/3 haplotypes')
     
     #Import information about plate cell type and patient
     key = pd.read_excel(metadata, sheet_name = 'PlateID')
@@ -130,7 +137,13 @@ def call_haps(data, metadata, pt_id, haps, reads,  cutoff):
     df = data.copy()
     df = df.groupby(['Plate', 'Well', 'Amplicon']).sum().unstack()
     df.columns = df.columns.droplevel(0)
-    
+
+    for v in cols:  #Check that dataset contains data for all amplicons for that haplotype
+        if v not in df.columns:
+            print(f'Data set does not contain {v}, data available is ', df.columns.to_list())
+            print('Exiting function with no output, contingent code will fail')
+            return
+   
     df = df.loc[(df[cols] >= reads).all(axis=1)] #df1 contains just the rows with cells we want - use this to create a filter or key
     df['Plate'] = df.index.get_level_values(0)  #These lines send indexes to columns
     df['Well'] = df.index.get_level_values(1)
@@ -407,8 +420,8 @@ def plot_index_heatmap_3(data, pt_id, haps, reads, cutoff, save = False):
     for i, j in enumerate(hap_poss):
         hap_order[j] = i
     
-    #haplotype dictionary
-    hap_dict = {'CR': 'wt', 'Cr': 'r', 'cR': 'c', 'cr': 'cr', 'SAR': 'wt', 'SAr': 'r', 'SaR': 'a', 'Sar': 'ar', 'sAR': 's', 'sAr': 'sr', 'saR': 'sa', 'sar': 'sar', 'SABR': 'wt', 'SABr': 'r', 'SAbR': 'b', 'SAbr': 'br', 'SaBR': 'a', 'SaBr': 'ar', 'SabR': 'ab', 'Sabr': 'abr', 'sABR': 's', 'sABr': 'sr', 'sAbR': 'sb', 'sAbr': 'sbr', 'saBR': 'sa', 'saBr': 'sar', 'sabR': 'sab', 'sabr': 'sabr', 'BA': 'wt', 'Ba': 'a', 'bA': 'b', 'ba': 'ba', 'BAS': 'wt', 'BAs': 's', 'BaS': 'a', 'Bas': 'as', 'bAS': 'b', 'bAs': 'bs', 'baS': 'ba', 'bas': 'bas', 'BAST': 'wt', 'BASt': 't', 'BAsT': 's', 'BAst': 'st', 'BaST': 'a', 'BaSt': 'at', 'BasT': 'as', 'Bast': 'ast', 'bAST': 'b', 'bASt': 'bt', 'bAsT': 'bs', 'bAst': 'bst', 'baST': 'ba', 'baSt': 'bat', 'basT': 'bas', 'bast': 'bast', 'BASC': 'wt', 'BASc': 'c', 'BAsC': 's', 'BAsc': 'sc', 'BaSC': 'a', 'BaSc': 'ac', 'BasC': 'as', 'Basc': 'asc', 'bASC': 'b', 'bASc': 'bc', 'bAsC': 'bs', 'bAsc': 'bsc', 'baSC': 'ba', 'baSc': 'bac', 'basC': 'bas', 'basc': 'basc'}
+    #haplotype dictionary - note that for PD7151 ba haplotype the graph is labelled with xxba to improve output matching for all figures
+    hap_dict = {'CR': 'wt', 'Cr': 'r', 'cR': 'c', 'cr': 'cr', 'SAR': 'wt', 'SAr': 'r', 'SaR': 'a', 'Sar': 'ar', 'sAR': 's', 'sAr': 'sr', 'saR': 'sa', 'sar': 'sar', 'SABR': 'wt', 'SABr': 'r', 'SAbR': 'b', 'SAbr': 'br', 'SaBR': 'a', 'SaBr': 'ar', 'SabR': 'ab', 'Sabr': 'abr', 'sABR': 's', 'sABr': 'sr', 'sAbR': 'sb', 'sAbr': 'sbr', 'saBR': 'sa', 'saBr': 'sar', 'sabR': 'sab', 'sabr': 'sabr', 'BA': 'wt', 'Ba': 'a', 'bA': 'b', 'ba': 'xxba', 'BAS': 'wt', 'BAs': 's', 'BaS': 'a', 'Bas': 'as', 'bAS': 'b', 'bAs': 'bs', 'baS': 'ba', 'bas': 'bas', 'BAST': 'wt', 'BASt': 't', 'BAsT': 's', 'BAst': 'st', 'BaST': 'a', 'BaSt': 'at', 'BasT': 'as', 'Bast': 'ast', 'bAST': 'b', 'bASt': 'bt', 'bAsT': 'bs', 'bAst': 'bst', 'baST': 'ba', 'baSt': 'bat', 'basT': 'bas', 'bast': 'bast', 'BASC': 'wt', 'BASc': 'c', 'BAsC': 's', 'BAsc': 'sc', 'BaSC': 'a', 'BaSc': 'ac', 'BasC': 'as', 'Basc': 'asc', 'bASC': 'b', 'bASc': 'bc', 'bAsC': 'bs', 'bAsc': 'bsc', 'baSC': 'ba', 'baSc': 'bac', 'basC': 'bas', 'basc': 'basc'}
 
     a = a.T
 
