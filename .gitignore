@@ -6,7 +6,16 @@ Results/*
 
 #Data folder - data is on ACP shared drive
 
-Data/*
+Data/Amp_data/clean_anon_allele_counts_resc_2.tsv
+Data/JP001_BM/*
+Data/JP001_PB/*
+Data/PD7151_BM/*
+Data/PD7151_PM/*
+Data/PD7153_BM/*
+Data/PD7153_PM/*
+Data/VAF_data/p377_variant_summary.html
+Data/VAF_data/JP001_newsort_sanger.xlsx
+Data/VAF_data/NZ_VAF_raw/*
 
 #Notebook checkpoints
 
