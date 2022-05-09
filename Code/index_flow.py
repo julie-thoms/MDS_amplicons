@@ -130,12 +130,13 @@ def get_channels(directory):
     return out_dict    
 
 
-def plate_qc(directory, data_name, save = False): 
+def plate_qc(directory, data_name, plate_size = '384', save = False): 
 	
 	'''
 	This function gives a visual QC output of which wells in each plate contain a sort event.
 	To call - plate_qc(directory, data_name)
 	data_name is a string that will be used to label graphs and output files
+	plate_size default is 384, but enter '96' for a 96 well plate
 	Sort locations are plotted using the default software assignment x(0-23), y(0-15) for Aria, with alphanumeric values applied to the graph only.
 	When save = True, save location is ../Results/
 	
@@ -148,8 +149,13 @@ def plate_qc(directory, data_name, save = False):
 	ax = ax.ravel()
 	fig.subplots_adjust(hspace = 0.3, wspace=.3)
 
-	xwell = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
-	ywell = [0,1,2,3,4,5,6,7,8,9,0,11,12,13,14,15]
+	if plate_size == '96':
+		xwell = [0,1,2,3,4,5,6,7,8,9,10,11]
+		ywell = [0,1,2,3,4,5,6,7]
+	else:		
+		xwell = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
+		ywell = [0,1,2,3,4,5,6,7,8,9,0,11,12,13,14,15]
+
 	allwells = []
 
 	for a in ywell: #this creates a list of all possible locations
@@ -176,8 +182,13 @@ def plate_qc(directory, data_name, save = False):
 			ax[count].scatter(x, y, alpha=alpha, color='gray')      
 		ax[count].set_title(plateid)
 		ax[count].invert_yaxis()  #flip the axis so the plate order looks natural
-		ax[count].set_xticklabels(['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24'])
-		ax[count].set_yticklabels(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'])
+
+		if plate_size == '96':
+			ax[count].set_xticklabels(['1','2','3','4','5','6','7','8','9','10','11','12'])
+			ax[count].set_yticklabels(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'])
+		else:
+			ax[count].set_xticklabels(['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24'])
+			ax[count].set_yticklabels(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'])
 
 	fig.suptitle(f'{data_name}', fontsize=14)
 
