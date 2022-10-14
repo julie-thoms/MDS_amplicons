@@ -16,6 +16,10 @@ Data/PD7153_PB/*
 Data/VAF_data/p377_variant_summary.html
 Data/VAF_data/JP001_newsort_sanger.xlsx
 Data/VAF_data/NZ_VAF_raw/*.xlsx
+Data/VAF_data/VAF_sorted/*
+Data/VAF_data/VAF_whole_BM/*
+Data/VAF_data/AMLgp111_PotentialfalsevariantsList_070322PMK.xlsx
+Data/Pt_outcomes/*
 
 #Notebook checkpoints
 
